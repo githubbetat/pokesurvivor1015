@@ -1,4 +1,4 @@
-name: TCTE 109 Exam Archive Source Probe
+name: TCTE 109 Official PDF Archive
 on:
   push:
     branches:
@@ -6,38 +6,19 @@ on:
 permissions:
   contents: read
 jobs:
-  probe:
+  download:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 18
     steps:
-      - name: Fetch official index
-        run: |
-          python3 - <<'PY'
-          import urllib.request,re,html,datetime,json
-          url='https://web1.tcte.edu.tw/EXAM/109_4y/'
-          try:
-              req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
-              with urllib.request.urlopen(req,timeout=35) as r:
-                  content=r.read()
-                  final=r.url
-                  print('STATUS',r.status,'BYTES',len(content),'URL',final)
-              open('raw.html','wb').write(content)
-              txt=content.decode('utf-8',errors='replace')
-              strings=[]
-              for pattern in [r'(?i)(?:href|src|onclick|onClick)\s*=\s*["\x27][^"\x27]{0,350}',r'(?i)downfile\.php[^\s"\x27<>]{0,250}',r'(?i)[^\s"\x27<>]{1,130}\.pdf[^\s"\x27<>]{0,160}']:
-                  strings+=re.findall(pattern,txt)
-              open('links.txt','w').write('\n'.join(html.unescape(s) for s in strings))
-              open('manifest.txt','w').write(json.dumps({'url':final,'bytes':len(content),'timestamp':datetime.datetime.now(datetime.timezone.utc).isoformat(),'candidate_links':len(strings)},ensure_ascii=False))
-              print('LINKS',len(strings),'SAMPLE',strings[:15])
-          except Exception as e:
-              open('manifest.txt','w').write('ERROR '+repr(e))
-              print('ERROR',repr(e))
-          PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@v4
+      - name: Install HTML parser
+        run: python3 -m pip install --quiet requests beautifulsoup4
+      - name: Download and hash original TCTE PDFs
+        run: python3 .github/scripts/download_tcte_109.py
+      - name: Upload exam archive as artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: tcte-109-index-probe
-          path: |
-            manifest.txt
-            links.txt
-            raw.html
-          if-no-files-found: warn
+          name: tcte-109-official-original-pdfs
+          path: output/
+          if-no-files-found: error
+          compression-level: 0
