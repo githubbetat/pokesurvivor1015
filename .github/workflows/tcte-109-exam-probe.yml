@@ -15,15 +15,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 18
     env:
-      EXAM_ROC_${{ matrix.roc }}: ${{ matrix.roc }}
+      EXAM_ROC_YEAR: ${{ matrix.roc }}
     steps:
       - uses: actions/checkout@v4
       - name: Install HTML parser
         run: python3 -m pip install --quiet requests beautifulsoup4
-      - name: Download source PDFs and source-page originals
+      - name: Preserve all linked official test and answer formats
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('.github/scripts/download_tcte_legacy.py')
+          s=p.read_text()
+          s=s.replace("'.pdf','.zip','.jpg'", "'.pdf','.zip','.rar','.jpg'")
+          s=s.replace("    if ext=='.zip' and '-gif.zip' in rel.lower():continue\n","")
+          s=s.replace("            if ext=='.zip' and not zipfile.is_zipfile(io.BytesIO(data)):raise ValueError('Invalid ZIP')", "            if ext=='.zip' and not zipfile.is_zipfile(io.BytesIO(data)):raise ValueError('Invalid ZIP')\n            if ext=='.rar' and not data.startswith(b'Rar!\\x1a\\x07'):raise ValueError('Invalid RAR')\n            if ext in ('.htm','.html') and b'<table' not in data.lower():raise ValueError('Missing answer table')")
+          p.write_text(s)
+          PY
           python3 .github/scripts/download_tcte_legacy.py
-          python3 -c "import json; m=json.load(open('output/manifest.json')); print('RESULT',m['expected'],m['success'],m['failed'],m['pdfs'],m['images']); assert m['expected']>=5 and m['success']>0"
+          python3 -c "import json; m=json.load(open('output/manifest.json')); print('RESULT',m['expected'],m['success'],m['failed'],m['pdfs'],m['images']); assert m['expected']>=40 and m['success']>0"
       - name: Upload originals and SHA256 provenance
         if: always()
         uses: actions/upload-artifact@v4
