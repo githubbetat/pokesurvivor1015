@@ -1,4 +1,4 @@
-name: TCTE official oldest exam PDF archive (99-96)
+name: TCTE official oldest exam PDF archive (95-90)
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        roc: [99, 98, 97, 96]
+        roc: [95, 94, 93, 92, 91, 90]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
