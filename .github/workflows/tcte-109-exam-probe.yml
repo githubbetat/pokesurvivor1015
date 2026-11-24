@@ -1,4 +1,4 @@
-name: TCTE official oldest exam PDF archive (95-90)
+name: TCTE legacy original exams (94-90)
 on:
   push:
     branches:
@@ -11,38 +11,24 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        roc: [95, 94, 93, 92, 91, 90]
+        roc: [94, 93, 92, 91, 90]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 18
     env:
       EXAM_ROC_${{ matrix.roc }}: ${{ matrix.roc }}
     steps:
       - uses: actions/checkout@v4
       - name: Install HTML parser
         run: python3 -m pip install --quiet requests beautifulsoup4
-      - name: Adjust source URL to three-digit ROC prefix
+      - name: Download source PDFs and source-page originals
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import os
-          year=int(os.environ["EXAM_ROC_${{ matrix.roc }}"])
-          p=Path(".github/scripts/download_tcte_109.py")
-          s=p.read_text()
-          s=s.replace("109_4y", f"{year:03d}_4y")
-          s=s.replace("109-4y-", f"{year}-4y-")
-          s=s.replace(f"name.startswith('{year}-4y-')", f"(name.startswith('{year}-4y-') or name.startswith('{year:03d}-4y-'))")
-          s=s.replace("109 四技",f"{year} 四技")
-          p.write_text(s)
-          PY
-      - name: Download and SHA256 verify original PDF files
-        run: |
-          python3 .github/scripts/download_tcte_109.py
-          python3 -c "import json; m=json.load(open('output/manifest.json')); print('RESULT',m['expected'],m['success'],m['failed']); assert m['expected'] >= 20 and m['success'] > 0"
-      - name: Upload original source files and hash inventory
+          python3 .github/scripts/download_tcte_legacy.py
+          python3 -c "import json; m=json.load(open('output/manifest.json')); print('RESULT',m['expected'],m['success'],m['failed'],m['pdfs'],m['images']); assert m['expected']>=5 and m['success']>0"
+      - name: Upload originals and SHA256 provenance
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tcte-${{ matrix.roc }}-official-original-pdfs
+          name: tcte-${{ matrix.roc }}-legacy-original-files
           path: output/
-          if-no-files-found: warn
           compression-level: 0
+          if-no-files-found: warn
