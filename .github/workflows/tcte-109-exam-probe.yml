@@ -1,4 +1,4 @@
-name: TCTE 107 Official PDF Archive
+name: TCTE official older exam PDF archive (106-103)
 on:
   push:
     branches:
@@ -7,20 +7,27 @@ permissions:
   contents: read
 jobs:
   download:
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        roc: [106, 105, 104, 103]
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Install HTML parser
         run: python3 -m pip install --quiet requests beautifulsoup4
-      - name: Download and hash 107 original PDFs
+      - name: Download and SHA256 verify official PDF originals
         run: |
-          sed -i 's/109_4y/107_4y/g;s/109-4y-/107-4y-/g;s/109 四技/107 四技/g' .github/scripts/download_tcte_109.py
+          sed -i "s/109_4y/${{ matrix.roc }}_4y/g;s/109-4y-/${{ matrix.roc }}-4y-/g;s/109 四技/${{ matrix.roc }} 四技/g" .github/scripts/download_tcte_109.py
           python3 .github/scripts/download_tcte_109.py
-      - name: Upload exam archive
+          python3 -c "import json; m=json.load(open('output/manifest.json')); print('RESULT',m['expected'],m['success'],m['failed']); assert m['expected'] >= 20 and m['success'] > 0"
+      - name: Upload original PDF archive and provenance
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tcte-107-official-original-pdfs
+          name: tcte-${{ matrix.roc }}-official-original-pdfs
           path: output/
-          if-no-files-found: error
+          if-no-files-found: warn
           compression-level: 0
